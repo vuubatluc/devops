@@ -11,11 +11,11 @@ output "s3_bucket" {
 }
 
 output "app_url" {
-  value = "http://${aws_eip.app.public_ip}:8000"
+  value = "http://${aws_eip.app.public_ip}"
 }
 
 output "docs_url" {
-  value = "http://${aws_eip.app.public_ip}:8000/docs"
+  value = "http://${aws_eip.app.public_ip}/docs"
 }
 
 output "grafana_url" {

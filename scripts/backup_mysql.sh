@@ -6,19 +6,34 @@ ENV_FILE="${ENV_FILE:-$APP_DIR/.env}"
 BACKUP_DIR="${BACKUP_DIR:-/tmp/fastapi-demo-backups}"
 BACKUP_S3_PREFIX="${BACKUP_S3_PREFIX:-backups/mysql}"
 ALERT_WEBHOOK_URL="${ALERT_WEBHOOK_URL:-}"
+ALERT_WEBHOOK_FORMAT="${ALERT_WEBHOOK_FORMAT:-slack}"
 
 notify() {
   local status="$1"
   local message="$2"
+  local payload
 
   if [[ -z "$ALERT_WEBHOOK_URL" ]]; then
     echo "[$status] $message"
     return
   fi
 
+  case "$ALERT_WEBHOOK_FORMAT" in
+    discord)
+      payload="$(python3 -c 'import json,sys; print(json.dumps({"content": sys.argv[1]}))' "[$status] $message")"
+      ;;
+    slack | generic)
+      payload="$(python3 -c 'import json,sys; print(json.dumps({"text": sys.argv[1]}))' "[$status] $message")"
+      ;;
+    *)
+      echo "Unsupported ALERT_WEBHOOK_FORMAT: $ALERT_WEBHOOK_FORMAT" >&2
+      return 1
+      ;;
+  esac
+
   curl -fsS \
     -H "Content-Type: application/json" \
-    -d "{\"text\":\"[$status] $message\"}" \
+    -d "$payload" \
     "$ALERT_WEBHOOK_URL" >/dev/null
 }
 
@@ -64,7 +79,12 @@ main() {
   local backup_file="$BACKUP_DIR/${db_name}_${timestamp}.sql.gz"
   local s3_uri="s3://${S3_BUCKET}/${BACKUP_S3_PREFIX}/${db_name}_${timestamp}.sql.gz"
 
-  trap 'notify "backup_failed" "MySQL backup failed for '"$db_name"' on '"$(hostname)"'"' ERR
+  trap 'notify "backup_failed" "MySQL backup failed for '"$db_name"' on '"$(hostname)"'. Check backup logs."' ERR
+
+  if [[ -z "$db_user" || -z "$db_password" || -z "$db_host" || -z "$db_name" ]]; then
+    echo "DATABASE_URL is missing required MySQL connection parts" >&2
+    exit 1
+  fi
 
   MYSQL_PWD="$db_password" mysqldump \
     --host="$db_host" \

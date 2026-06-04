@@ -47,7 +47,8 @@ docker compose up -d --build
 
 Services:
 
-- App: `http://localhost:8000`
+- App through Nginx: `http://localhost`
+- App debug on EC2 only: `http://127.0.0.1:8000`
 - Prometheus: `http://localhost:9090`
 - Grafana: `http://localhost:3000`
 
@@ -57,6 +58,49 @@ Grafana default login:
 admin / admin
 ```
 
+## Nginx and Domain
+
+Nginx listens on port `80` and proxies traffic to the FastAPI container.
+
+After buying a domain, create DNS records:
+
+```text
+Type: A
+Name: @
+Value: EC2_PUBLIC_IP
+
+Type: A
+Name: www
+Value: EC2_PUBLIC_IP
+```
+
+Open these EC2 inbound ports:
+
+```text
+80/tcp   0.0.0.0/0
+443/tcp  0.0.0.0/0
+```
+
+For the current Docker setup, edit `nginx/conf.d/default.conf` and replace:
+
+```nginx
+server_name _;
+```
+
+with:
+
+```nginx
+server_name example.com www.example.com;
+```
+
+Then redeploy:
+
+```bash
+docker compose up -d --build
+```
+
+Use an Elastic IP for EC2 before pointing a real domain at it. Without Elastic IP, the public IP can change after stop/start.
+
 ## GitHub Actions
 
 CI runs on pull requests and pushes to `main`:
@@ -65,19 +109,35 @@ CI runs on pull requests and pushes to `main`:
 - run tests
 - build Docker image
 
-CD deploys on pushes to `main` or manual workflow dispatch. Add these repository secrets:
-
-```text
-EC2_HOST      public IP or DNS of EC2
-EC2_USER      ubuntu
-EC2_SSH_KEY   private key content for SSH
-```
-
-The deploy job updates either `/opt/fastapi-demo` or `~/devops`, then runs:
+CD deploys on pushes to `main` or manual workflow dispatch. It expects a self-hosted GitHub Actions runner on the EC2 instance. The deploy job updates either `/opt/fastapi-demo` or `~/devops`, then runs:
 
 ```bash
 docker compose up -d --build
 ```
+
+### Self-Hosted Runner on EC2
+
+In GitHub, open:
+
+```text
+Settings -> Actions -> Runners -> New self-hosted runner
+```
+
+Choose Linux x64 and run the generated commands on EC2. Install it as a service:
+
+```bash
+sudo ./svc.sh install
+sudo ./svc.sh start
+sudo ./svc.sh status
+```
+
+The `ubuntu` user must be able to run Docker:
+
+```bash
+sudo usermod -aG docker ubuntu
+```
+
+After confirming deployments work, restrict EC2 inbound SSH back to your IP only.
 
 ## Terraform
 
@@ -121,7 +181,22 @@ The backup script reads `.env`, runs `mysqldump`, compresses the SQL dump, and u
 APP_DIR=/opt/fastapi-demo ./scripts/backup_mysql.sh
 ```
 
-On Terraform-created EC2, cron runs it daily at `02:00 UTC` and writes logs to:
+For a manually created EC2 where the repo is in `~/devops`, test it with:
+
+```bash
+cd ~/devops
+APP_DIR=$PWD ./scripts/backup_mysql.sh
+aws s3 ls "s3://$S3_BUCKET/$BACKUP_S3_PREFIX/"
+```
+
+Install the daily cron job:
+
+```bash
+cd ~/devops
+APP_DIR=$PWD ./scripts/install_backup_cron.sh
+```
+
+By default, cron runs daily at `02:00 UTC` and writes logs to:
 
 ```text
 /var/log/fastapi-demo-backup.log
@@ -131,4 +206,11 @@ Optional alerting:
 
 ```env
 ALERT_WEBHOOK_URL=https://your-webhook-url
+ALERT_WEBHOOK_FORMAT=slack
+```
+
+Use Discord webhooks with:
+
+```env
+ALERT_WEBHOOK_FORMAT=discord
 ```

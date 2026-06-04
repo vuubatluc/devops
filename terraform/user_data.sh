@@ -27,15 +27,9 @@ S3_BUCKET=${s3_bucket}
 AWS_REGION=${aws_region}
 BACKUP_S3_PREFIX=backups/mysql
 ALERT_WEBHOOK_URL=
+ALERT_WEBHOOK_FORMAT=slack
 EOF
 
 cd /opt/fastapi-demo
 docker compose up -d --build
-
-cat > /etc/cron.d/fastapi-demo-backup << 'EOF'
-SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-0 2 * * * ubuntu APP_DIR=/opt/fastapi-demo /opt/fastapi-demo/scripts/backup_mysql.sh >> /var/log/fastapi-demo-backup.log 2>&1
-EOF
-
-chmod 0644 /etc/cron.d/fastapi-demo-backup
+APP_DIR=/opt/fastapi-demo /opt/fastapi-demo/scripts/install_backup_cron.sh
