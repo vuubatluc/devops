@@ -17,3 +17,11 @@ output "app_url" {
 output "docs_url" {
   value = "http://${aws_eip.app.public_ip}:8000/docs"
 }
+
+output "grafana_url" {
+  value = "http://${aws_eip.app.public_ip}:3000"
+}
+
+output "prometheus_url" {
+  value = "http://${aws_eip.app.public_ip}:9090"
+}

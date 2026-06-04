@@ -25,3 +25,15 @@ variable "db_password" {
 variable "s3_bucket_name" {
   type = string
 }
+
+variable "admin_cidr" {
+  type        = string
+  description = "CIDR allowed to access SSH, Grafana, and Prometheus."
+  default     = "0.0.0.0/0"
+}
+
+variable "app_cidr" {
+  type        = string
+  description = "CIDR allowed to access the FastAPI app."
+  default     = "0.0.0.0/0"
+}
