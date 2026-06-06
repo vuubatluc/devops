@@ -1,5 +1,7 @@
 # DevOps Mini Project: FastAPI on AWS
+
 Video demo: https://youtu.be/sUd3Fi2XHYk?si=kAD6KsTbnRjCeWbk
+
 Mini project for practicing a complete DevOps workflow:
 
 - FastAPI app with a basic browser UI
