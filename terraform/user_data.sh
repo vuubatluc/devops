@@ -21,8 +21,8 @@ fi
 rm -rf /opt/fastapi-demo
 git clone https://github.com/${github_repo}.git /opt/fastapi-demo
 
-cat > /opt/fastapi-demo/.env << EOF
-DATABASE_URL=mysql+pymysql://admin:${db_password}@${db_host}:3306/demo_db
+cat > /opt/fastapi-demo/.env << 'EOF'
+DATABASE_URL=${database_url}
 S3_BUCKET=${s3_bucket}
 AWS_REGION=${aws_region}
 BACKUP_S3_PREFIX=backups/mysql

@@ -174,11 +174,10 @@ resource "aws_instance" "app" {
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
 
   user_data = templatefile("${path.module}/user_data.sh", {
-    github_repo = var.github_repo
-    db_host     = aws_db_instance.mysql.address
-    db_password = var.db_password
-    s3_bucket   = var.s3_bucket_name
-    aws_region  = var.aws_region
+    github_repo  = var.github_repo
+    database_url = "mysql+pymysql://admin:${urlencode(var.db_password)}@${aws_db_instance.mysql.address}:3306/demo_db"
+    s3_bucket    = var.s3_bucket_name
+    aws_region   = var.aws_region
   })
 
   root_block_device {
